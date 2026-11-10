@@ -1,5 +1,5 @@
 name: wooden_mill_app
-description: "A new Flutter project."
+description: "Timbr: offline billing for a timber mill."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -43,6 +43,7 @@ dependencies:
   printing: ^5.15.0
   go_router: ^17.3.0
   package_info_plus: ^10.2.1
+  file_picker: ^13.3.3
 
 dev_dependencies:
   flutter_test:

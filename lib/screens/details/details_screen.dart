@@ -5,9 +5,11 @@ import 'package:wooden_mill_app/core/utils/pdf_invoice_helper.dart';
 import 'package:wooden_mill_app/core/utils/volume_calculator.dart';
 import 'package:wooden_mill_app/models/order.dart';
 import 'package:wooden_mill_app/repositories/order_repository.dart';
+import 'package:wooden_mill_app/widgets/app_dialogs.dart';
+import 'package:wooden_mill_app/widgets/app_section.dart';
+import 'package:wooden_mill_app/widgets/empty_state.dart';
+import 'package:wooden_mill_app/widgets/receipt_slip.dart';
 import 'package:wooden_mill_app/widgets/shad_badge.dart';
-import 'package:wooden_mill_app/widgets/shad_card.dart';
-import 'package:wooden_mill_app/widgets/shad_stat_tile.dart';
 
 class DetailsScreen extends StatefulWidget {
   final int orderId;
@@ -49,59 +51,31 @@ class _DetailsScreenState extends State<DetailsScreen> {
     });
   }
 
-  void _handleDeleteOrder(BuildContext context, OrderModel order) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(ShadTokens.radiusLg),
-          side: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
-        title: const Text('Delete Order Record?'),
-        content: Text(
-          'Are you sure you want to delete the order record for ${order.customerName}? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  Future<void> _deleteOrder(OrderModel order) async {
+    final confirmed = await confirmDialog(
+      context,
+      title: 'Delete this order?',
+      message: 'The order for ${order.customerName} will be deleted. This can\'t be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
+    if (!confirmed) return;
 
-    if (confirm == true) {
-      await _repository.deleteOrderById(order.id!);
-      if (!context.mounted) return;
+    await _repository.deleteOrderById(order.id!);
+    if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order record deleted successfully'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    showAppSnack(context, 'Order deleted');
 
-      if (widget.onDeleted != null) {
-        widget.onDeleted!();
-      } else if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(true);
-      }
+    if (widget.onDeleted != null) {
+      widget.onDeleted!();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return FutureBuilder<OrderModel?>(
+    final body = FutureBuilder<OrderModel?>(
       future: _orderFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -109,194 +83,139 @@ class _DetailsScreenState extends State<DetailsScreen> {
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, color: theme.colorScheme.error, size: 48),
-                const SizedBox(height: 16),
-                const Text('Error loading order details'),
-                const SizedBox(height: 12),
-                OutlinedButton(onPressed: _loadOrder, child: const Text('Retry')),
-              ],
-            ),
+          return EmptyState(
+            icon: Icons.error_outline,
+            isError: true,
+            title: 'Couldn\'t load this order',
+            actionLabel: 'Try again',
+            onAction: _loadOrder,
           );
         }
 
         final order = snapshot.data;
         if (order == null) {
-          return const Center(child: Text('Order not found'));
+          return const EmptyState(icon: Icons.search_off, title: 'Order not found');
         }
 
-        final formattedDate = DateFormat('dd MMMM yyyy, hh:mm a').format(order.dateTime);
-
-        final bodyContent = ListView(
-          padding: const EdgeInsets.all(ShadTokens.spaceLg),
-          children: [
-            ShadCard(
-              title: 'Customer Details',
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ShadBadge(
-                    label: order.woodType,
-                    variant: ShadBadgeVariant.defaultVariant,
-                  ),
-                  if (widget.isEmbedded) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.print_outlined, size: 20),
-                      tooltip: 'Print Receipt (PDF)',
-                      onPressed: () => PdfInvoiceHelper.printOrderInvoice(context, order),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
-                      tooltip: 'Delete Order Record',
-                      onPressed: () => _handleDeleteOrder(context, order),
-                    ),
-                  ],
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildDetailRow(Icons.person_outline, 'Customer Name', order.customerName, theme),
-                  const SizedBox(height: 10),
-                  _buildDetailRow(Icons.phone_outlined, 'Phone Number', order.phone, theme),
-                  const SizedBox(height: 10),
-                  _buildDetailRow(Icons.calendar_today_outlined, 'Date & Time', formattedDate, theme),
-                ],
-              ),
-            ),
-            const SizedBox(height: ShadTokens.spaceLg),
-
-            // Logs Table Card
-            ShadCard(
-              title: 'Log Dimensions Breakdown',
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 28,
-                  horizontalMargin: 8,
-                  headingRowHeight: 40,
-                  dataRowMinHeight: 44,
-                  columns: const [
-                    DataColumn(label: Text('#', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Length (ft)', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Girth (in)', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Volume (cft)', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Price', style: TextStyle(fontWeight: FontWeight.bold))),
-                  ],
-                  rows: List<DataRow>.generate(order.logs.length, (index) {
-                    final log = order.logs[index];
-                    return DataRow(
-                      cells: [
-                        DataCell(Text('${index + 1}')),
-                        DataCell(Text(log.length.toStringAsFixed(1))),
-                        DataCell(Text(log.girth.toStringAsFixed(1))),
-                        DataCell(Text(VolumeCalculator.formatVolume(log.volume))),
-                        DataCell(Text(VolumeCalculator.formatCurrency(log.price))),
-                      ],
-                    );
-                  }),
-                ),
-              ),
-            ),
-            const SizedBox(height: ShadTokens.spaceLg),
-
-            // Financial Summary Card
-            ShadCard(
-              title: 'Financial Breakdown',
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ShadStatTile(
-                          label: 'Total Volume',
-                          value: '${VolumeCalculator.formatVolume(order.totalVolume)} cft',
-                          icon: Icons.layers_outlined,
-                        ),
-                      ),
-                      const SizedBox(width: ShadTokens.spaceMd),
-                      Expanded(
-                        child: ShadStatTile(
-                          label: 'Subtotal',
-                          value: VolumeCalculator.formatCurrency(order.subtotal),
-                          icon: Icons.payments_outlined,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: ShadTokens.spaceMd),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ShadStatTile(
-                          label: 'Cutting Charge',
-                          value: VolumeCalculator.formatCurrency(order.cuttingCharge),
-                        ),
-                      ),
-                      const SizedBox(width: ShadTokens.spaceMd),
-                      Expanded(
-                        child: ShadStatTile(
-                          label: 'Discount',
-                          value: '- ${VolumeCalculator.formatCurrency(order.discount)}',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: ShadTokens.spaceMd),
-                  ShadStatTile(
-                    label: 'Final Payable Amount',
-                    value: VolumeCalculator.formatCurrency(order.finalPrice),
-                    icon: Icons.account_balance_wallet_outlined,
-                    isHighlight: true,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-
-        if (widget.isEmbedded) {
-          return bodyContent;
-        }
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Order Details'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.print_outlined),
-                tooltip: 'Print Receipt (PDF)',
-                onPressed: () => PdfInvoiceHelper.printOrderInvoice(context, order),
-              ),
-              IconButton(
-                icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                tooltip: 'Delete Order Record',
-                onPressed: () => _handleDeleteOrder(context, order),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: bodyContent,
-        );
+        return _buildOrder(order);
       },
+    );
+
+    if (widget.isEmbedded) return body;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Order details')),
+      body: SafeArea(child: body),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, ThemeData theme) {
+  Widget _buildOrder(OrderModel order) {
+    final theme = Theme.of(context);
+    final text = theme.textTheme;
+    final scheme = theme.colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: ShadTokens.spaceXl),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ShadTokens.spaceLg,
+            ShadTokens.spaceXl,
+            ShadTokens.spaceLg,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(order.customerName, style: text.titleLarge)),
+                  const SizedBox(width: ShadTokens.spaceMd),
+                  ShadBadge(label: order.woodType, variant: ShadBadgeVariant.outline),
+                ],
+              ),
+              const SizedBox(height: ShadTokens.spaceSm),
+              _iconLine(Icons.phone_outlined, order.phone),
+              const SizedBox(height: ShadTokens.spaceXs),
+              _iconLine(
+                Icons.calendar_today_outlined,
+                DateFormat('dd MMMM yyyy, hh:mm a').format(order.dateTime),
+              ),
+            ],
+          ),
+        ),
+        AppSection(
+          title: 'Logs',
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('#')),
+                    DataColumn(label: Text('Length (ft)'), numeric: true),
+                    DataColumn(label: Text('Girth (in)'), numeric: true),
+                    DataColumn(label: Text('Volume (cft)'), numeric: true),
+                    DataColumn(label: Text('Price'), numeric: true),
+                  ],
+                  rows: [
+                    for (int i = 0; i < order.logs.length; i++)
+                      DataRow(
+                        cells: [
+                          DataCell(Text('${i + 1}')),
+                          DataCell(Text(order.logs[i].length.toStringAsFixed(1))),
+                          DataCell(Text(order.logs[i].girth.toStringAsFixed(1))),
+                          DataCell(Text(VolumeCalculator.formatVolume(order.logs[i].volume))),
+                          DataCell(Text(VolumeCalculator.formatCurrency(order.logs[i].price))),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        AppSection(
+          title: 'Bill',
+          child: ReceiptSlip(order: order, showCustomer: false, showLogs: false),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            ShadTokens.spaceLg,
+            ShadTokens.space2xl,
+            ShadTokens.spaceLg,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                onPressed: () => PdfInvoiceHelper.printOrderInvoice(context, order),
+                icon: const Icon(Icons.print_outlined),
+                label: const Text('Print receipt'),
+              ),
+              const SizedBox(height: ShadTokens.spaceSm),
+              TextButton.icon(
+                onPressed: () => _deleteOrder(order),
+                style: TextButton.styleFrom(foregroundColor: scheme.error),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete order'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _iconLine(IconData icon, String value) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
-            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-          ],
-        ),
+        const SizedBox(width: ShadTokens.spaceSm),
+        Expanded(child: Text(value, style: theme.textTheme.bodyLarge)),
       ],
     );
   }

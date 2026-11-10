@@ -263,27 +263,27 @@ class HomeController extends ChangeNotifier {
     _errorMessage = null;
 
     if (customerNameController.text.trim().isEmpty) {
-      _errorMessage = 'Customer Name is required';
+      _errorMessage = 'Enter the customer name';
       notifyListeners();
       return false;
     }
 
     final phone = phoneController.text.trim();
     if (phone.isEmpty) {
-      _errorMessage = 'Phone Number is required';
+      _errorMessage = 'Enter the phone number';
       notifyListeners();
       return false;
     }
 
     final phoneRegex = RegExp(r'^\d{10}$');
     if (!phoneRegex.hasMatch(phone)) {
-      _errorMessage = 'Phone Number must be exactly 10 digits';
+      _errorMessage = 'The phone number must be exactly 10 digits';
       notifyListeners();
       return false;
     }
 
     if (_logs.isEmpty) {
-      _errorMessage = 'At least 1 log is required';
+      _errorMessage = 'Add at least 1 log';
       notifyListeners();
       return false;
     }
@@ -294,7 +294,7 @@ class HomeController extends ChangeNotifier {
       final girthText = log.girthController.text.trim();
 
       if (lengthText.isEmpty || girthText.isEmpty) {
-        _errorMessage = 'Log #${i + 1} has empty dimensions';
+        _errorMessage = 'Enter the length and girth for log ${i + 1}';
         notifyListeners();
         return false;
       }
@@ -303,37 +303,62 @@ class HomeController extends ChangeNotifier {
       final girth = double.tryParse(girthText);
 
       if (length == null || length <= 0) {
-        _errorMessage = 'Log #${i + 1} length must be greater than zero';
+        _errorMessage = 'Log ${i + 1}: the length must be above 0';
         notifyListeners();
         return false;
       }
 
       if (girth == null || girth <= 0) {
-        _errorMessage = 'Log #${i + 1} girth must be greater than zero';
+        _errorMessage = 'Log ${i + 1}: the girth must be above 0';
         notifyListeners();
         return false;
       }
     }
 
     if (_cuttingCharge < 0) {
-      _errorMessage = 'Cutting charge cannot be negative';
+      _errorMessage = 'The cutting charge can\'t be negative';
       notifyListeners();
       return false;
     }
 
     if (_discount < 0) {
-      _errorMessage = 'Discount cannot be negative';
+      _errorMessage = 'The discount can\'t be negative';
       notifyListeners();
       return false;
     }
 
     if (_finalPrice < 0) {
-      _errorMessage = 'Final price cannot be negative';
+      _errorMessage = 'The discount can\'t be more than the bill';
       notifyListeners();
       return false;
     }
 
     return true;
+  }
+
+  /// The order as entered. Call after [validateForm] has passed.
+  OrderModel buildOrder() {
+    return OrderModel(
+      customerName: customerNameController.text.trim(),
+      phone: phoneController.text.trim(),
+      woodType: _selectedWoodType.name,
+      numberOfLogs: _logs.length,
+      totalVolume: _totalVolume,
+      subtotal: _subtotal,
+      cuttingCharge: _cuttingCharge,
+      discount: _discount,
+      finalPrice: _finalPrice,
+      dateTime: DateTime.now(),
+      logs: [
+        for (final log in _logs)
+          LogDimension(
+            length: double.parse(log.lengthController.text),
+            girth: double.parse(log.girthController.text),
+            volume: log.volume,
+            price: log.price,
+          ),
+      ],
+    );
   }
 
   /// Saves the current order to SQLite.
@@ -343,30 +368,7 @@ class HomeController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final List<LogDimension> dbLogs = _logs.map((log) {
-        final length = double.parse(log.lengthController.text);
-        final girth = double.parse(log.girthController.text);
-        return LogDimension(
-          length: length,
-          girth: girth,
-          volume: log.volume,
-          price: log.price,
-        );
-      }).toList();
-
-      final order = OrderModel(
-        customerName: customerNameController.text.trim(),
-        phone: phoneController.text.trim(),
-        woodType: _selectedWoodType.name,
-        numberOfLogs: _logs.length,
-        totalVolume: _totalVolume,
-        subtotal: _subtotal,
-        cuttingCharge: _cuttingCharge,
-        discount: _discount,
-        finalPrice: _finalPrice,
-        dateTime: DateTime.now(),
-        logs: dbLogs,
-      );
+      final order = buildOrder();
 
       final orderId = await _repository.saveOrder(order);
       await _draftRepository.clearDraft();
@@ -374,9 +376,9 @@ class HomeController extends ChangeNotifier {
       _isSaving = false;
       notifyListeners();
       return order.copyWith(id: orderId);
-    } catch (e) {
+    } catch (_) {
       _isSaving = false;
-      _errorMessage = 'Database Failure: Failed to save the order. Error: $e';
+      _errorMessage = 'Couldn\'t save the order. Try again.';
       notifyListeners();
       return null;
     }

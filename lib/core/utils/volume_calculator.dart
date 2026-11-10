@@ -26,6 +26,11 @@ class VolumeCalculator {
     return volume.toStringAsFixed(3);
   }
 
+  /// Formats a per-cft rate with separators and no decimals, e.g. ₹4,800
+  static String formatRate(double rate) {
+    return NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(rate);
+  }
+
   /// Formats currency (Rupee) to a readable string (2 decimal places with separators)
   static String formatCurrency(double amount) {
     final formatter = NumberFormat.currency(

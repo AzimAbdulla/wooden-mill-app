@@ -75,6 +75,25 @@ class OrderModel {
     };
   }
 
+  /// [toMap] plus the log rows, for backup files.
+  Map<String, dynamic> toBackupMap() {
+    return {
+      ...toMap(),
+      'logs': logs.map((log) => log.toMap()).toList(),
+    };
+  }
+
+  /// Reads a backup entry. Backups made before logs were included have none.
+  factory OrderModel.fromBackupMap(Map<String, dynamic> map) {
+    final rawLogs = map['logs'] as List<dynamic>? ?? const [];
+    return OrderModel.fromMap(
+      map,
+      logs: rawLogs
+          .map((log) => LogDimension.fromMap(Map<String, dynamic>.from(log as Map)))
+          .toList(),
+    );
+  }
+
   factory OrderModel.fromMap(Map<String, dynamic> map, {List<LogDimension> logs = const []}) {
     return OrderModel(
       id: map['id'] as int?,

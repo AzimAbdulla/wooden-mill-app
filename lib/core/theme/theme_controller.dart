@@ -18,9 +18,9 @@ class ThemeController extends ChangeNotifier {
   static const String _densityPrefKey = 'display_density';
   static const String _colorThemePrefKey = 'color_theme';
 
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light;
   AppDisplayDensity _displayDensity = AppDisplayDensity.recommended;
-  AppColorTheme _colorTheme = AppColorTheme.timber;
+  AppColorTheme _colorTheme = AppColorTheme.plain;
 
   ThemeMode get themeMode => _themeMode;
   AppDisplayDensity get displayDensity => _displayDensity;
@@ -61,7 +61,7 @@ class ThemeController extends ChangeNotifier {
       if (savedColorTheme != null) {
         _colorTheme = AppColorTheme.values.firstWhere(
           (c) => c.name == savedColorTheme,
-          orElse: () => AppColorTheme.timber,
+          orElse: () => AppColorTheme.plain,
         );
       }
 
@@ -117,9 +117,9 @@ class ThemeController extends ChangeNotifier {
   }
 
   Future<void> resetSettings() async {
-    _themeMode = ThemeMode.system;
+    _themeMode = ThemeMode.light;
     _displayDensity = AppDisplayDensity.recommended;
-    _colorTheme = AppColorTheme.timber;
+    _colorTheme = AppColorTheme.plain;
     notifyListeners();
 
     try {

@@ -62,16 +62,14 @@ class ShadBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: fg),
+            Icon(icon, size: 14, color: fg),
             const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
+            style: theme.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: fg,
-              letterSpacing: -0.1,
             ),
           ),
         ],

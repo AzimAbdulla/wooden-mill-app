@@ -27,11 +27,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
       _lastBackPressTime = now;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Back again to exit'),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ShadTokens.radiusSm)),
+        const SnackBar(
+          content: Text('Back again to exit'),
+          duration: Duration(seconds: 2),
         ),
       );
       return false; // Prevent exit
@@ -60,8 +58,6 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                   selectedIndex: widget.selectedIndex,
                   onDestinationSelected: widget.onDestinationSelected,
                   labelType: NavigationRailLabelType.all,
-                  backgroundColor: theme.colorScheme.surface,
-                  indicatorColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   leading: Padding(
                     padding: const EdgeInsets.symmetric(vertical: ShadTokens.spaceLg),
                     child: ClipRRect(
@@ -81,11 +77,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                         padding: const EdgeInsets.only(bottom: ShadTokens.spaceLg),
                         child: Text(
                           AppConstants.appVersionName,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.labelSmall,
                         ),
                       ),
                     ),
@@ -94,7 +86,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                     NavigationRailDestination(
                       icon: Icon(Icons.note_add_outlined),
                       selectedIcon: Icon(Icons.note_add),
-                      label: Text('New Order'),
+                      label: Text('New order'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.history_outlined),
@@ -108,7 +100,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                     ),
                   ],
                 ),
-                VerticalDivider(width: 1, thickness: 1, color: theme.colorScheme.outline),
+                const VerticalDivider(),
                 // Main Body Content
                 Expanded(
                   child: activeBody,
@@ -120,19 +112,16 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             body: activeBody,
             bottomNavigationBar: Container(
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: theme.colorScheme.outline, width: 1)),
+                border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
               ),
               child: NavigationBar(
                 selectedIndex: widget.selectedIndex,
                 onDestinationSelected: widget.onDestinationSelected,
-                backgroundColor: theme.colorScheme.surface,
-                elevation: 0,
-                indicatorColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                 destinations: const [
                   NavigationDestination(
                     icon: Icon(Icons.note_add_outlined),
                     selectedIcon: Icon(Icons.note_add),
-                    label: 'New Order',
+                    label: 'New order',
                   ),
                   NavigationDestination(
                     icon: Icon(Icons.history_outlined),
